@@ -23,11 +23,11 @@ import (
 	"github.com/siderolabs/gen/xslices"
 	"github.com/siderolabs/talos/pkg/machinery/constants"
 	"github.com/siderolabs/talos/pkg/machinery/imager/quirks"
+	"github.com/siderolabs/talos/pkg/machinery/platforms"
 	"gopkg.in/yaml.v3"
 
 	"github.com/skyssolutions/siderolabs-image-factory/internal/artifacts"
 	"github.com/skyssolutions/siderolabs-image-factory/internal/version"
-	"github.com/skyssolutions/siderolabs-image-factory/pkg/metadata"
 	"github.com/skyssolutions/siderolabs-image-factory/pkg/schematic"
 )
 
@@ -135,8 +135,8 @@ type WizardParams struct { //nolint:govet
 	SelectedOverlayOptions string
 
 	// Dynamically set fields.
-	PlatformMeta metadata.Platform
-	BoardMeta    metadata.SBC
+	PlatformMeta platforms.Platform
+	BoardMeta    platforms.SBC
 }
 
 // WizardParamsFromRequest extracts the wizard parameters from the request.
@@ -167,14 +167,15 @@ func WizardParamsFromRequest(r *http.Request) WizardParams {
 	switch {
 	case params.Target == TargetMetal:
 		params.Platform = constants.PlatformMetal
+		params.PlatformMeta = platforms.MetalPlatform()
 	case params.Target == TargetSBC:
 		params.Platform = constants.PlatformMetal
 
 		if params.Board != "" {
-			if idx := slices.IndexFunc(metadata.SBCs(), func(p metadata.SBC) bool {
+			if idx := slices.IndexFunc(platforms.SBCs(), func(p platforms.SBC) bool {
 				return p.Name == params.Board
 			}); idx != -1 {
-				params.BoardMeta = metadata.SBCs()[idx]
+				params.BoardMeta = platforms.SBCs()[idx]
 			}
 
 			if params.Arch == "" {
@@ -186,17 +187,17 @@ func WizardParamsFromRequest(r *http.Request) WizardParams {
 			}
 		}
 	case params.Target == TargetCloud && params.Platform != "":
-		if idx := slices.IndexFunc(metadata.Platforms(), func(p metadata.Platform) bool {
+		if idx := slices.IndexFunc(platforms.CloudPlatforms(), func(p platforms.Platform) bool {
 			return p.Name == params.Platform
 		}); idx != -1 {
-			params.PlatformMeta = metadata.Platforms()[idx]
+			params.PlatformMeta = platforms.CloudPlatforms()[idx]
 
 			if len(params.PlatformMeta.Architectures) == 1 && params.Arch == "" {
 				if params.SelectedArch != "" {
 					// going back, reset platform choice
 					params.SelectedPlatform, params.Platform = params.Platform, ""
 				} else {
-					params.Arch = string(params.PlatformMeta.Architectures[0])
+					params.Arch = params.PlatformMeta.Architectures[0]
 				}
 			}
 		}
@@ -283,9 +284,9 @@ func (f *Frontend) wizardClouds(_ context.Context, params WizardParams) (string,
 
 	talosVersion, _ := semver.ParseTolerant(params.Version) //nolint:errcheck
 
-	allPlatforms := metadata.Platforms()
+	allPlatforms := platforms.CloudPlatforms()
 
-	allPlatforms = xslices.Filter(allPlatforms, func(p metadata.Platform) bool {
+	allPlatforms = xslices.Filter(allPlatforms, func(p platforms.Platform) bool {
 		if value.IsZero(&p.MinVersion) {
 			return true
 		}
@@ -296,7 +297,7 @@ func (f *Frontend) wizardClouds(_ context.Context, params WizardParams) (string,
 	return "wizard-cloud",
 		struct {
 			WizardParams
-			Platforms []metadata.Platform
+			Platforms []platforms.Platform
 		}{
 			WizardParams: params,
 			Platforms:    allPlatforms,
@@ -316,9 +317,9 @@ func (f *Frontend) wizardSBCs(_ context.Context, params WizardParams) (string, a
 
 	talosVersion, _ := semver.ParseTolerant(params.Version) //nolint:errcheck
 
-	allSBCs := metadata.SBCs()
+	allSBCs := platforms.SBCs()
 
-	allSBCs = xslices.Filter(allSBCs, func(p metadata.SBC) bool {
+	allSBCs = xslices.Filter(allSBCs, func(p platforms.SBC) bool {
 		if value.IsZero(&p.MinVersion) {
 			return true
 		}
@@ -329,7 +330,7 @@ func (f *Frontend) wizardSBCs(_ context.Context, params WizardParams) (string, a
 	return "wizard-sbc",
 		struct {
 			WizardParams
-			SBCs []metadata.SBC
+			SBCs []platforms.SBC
 		}{
 			WizardParams: params,
 			SBCs:         allSBCs,
@@ -413,42 +414,34 @@ func (f *Frontend) wizardFinal(ctx context.Context, params WizardParams) (string
 
 	slices.Sort(extensions)
 
-	var (
-		overlay     schematic.Overlay
-		legacyBoard string
-	)
+	var overlay schematic.Overlay
 
-	if params.Target == TargetSBC {
-		if quirks.New(params.Version).SupportsOverlay() {
-			allOverlays, err := f.artifactsManager.GetOfficialOverlays(ctx, params.Version)
-			if err != nil {
-				return "", nil, nil, fmt.Errorf("failed to get overlays: %w", err)
+	if params.Target == TargetSBC && quirks.New(params.Version).SupportsOverlay() {
+		allOverlays, err := f.artifactsManager.GetOfficialOverlays(ctx, params.Version)
+		if err != nil {
+			return "", nil, nil, fmt.Errorf("failed to get overlays: %w", err)
+		}
+
+		targetArch := artifacts.Arch(params.Arch)
+		filteredOverlays, err := artifacts.FilterOverlaysByArch(ctx, f.logger, allOverlays, targetArch, f.artifactsManager.GetRemoteOptions()...)
+		if err != nil {
+			return "", nil, nil, fmt.Errorf("failed to filter overlays by architecture: %w", err)
+		}
+
+		if len(filteredOverlays) > 0 {
+			overlay.Name = filteredOverlays[0].Name // Or filteredOverlays[0].TaggedReference.Name() if needed
+			overlay.Image = filteredOverlays[0].TaggedReference.String()
+
+			var overlayOptsParsed map[string]any
+			if err := yaml.Unmarshal([]byte(params.OverlayOptions), &overlayOptsParsed); err != nil {
+				return "", nil, nil, fmt.Errorf("error parsing overlay options: %w", err)
 			}
-
-			targetArch := artifacts.Arch(params.Arch)
-			filteredOverlays, err := artifacts.FilterOverlaysByArch(ctx, f.logger, allOverlays, targetArch, f.artifactsManager.GetRemoteOptions()...)
-			if err != nil {
-				return "", nil, nil, fmt.Errorf("failed to filter overlays by architecture: %w", err)
-			}
-
-			if len(filteredOverlays) > 0 {
-				overlay.Name = filteredOverlays[0].Name // Or filteredOverlays[0].TaggedReference.Name() if needed
-				overlay.Image = filteredOverlays[0].TaggedReference.String()
-
-				var overlayOptsParsed map[string]any
-				if err := yaml.Unmarshal([]byte(params.OverlayOptions), &overlayOptsParsed); err != nil {
-					return "", nil, nil, fmt.Errorf("error parsing overlay options: %w", err)
-				}
-				overlay.Options = overlayOptsParsed
-
-			} else {
-				errMsg := fmt.Sprintf("no matching overlay found for architecture %s", targetArch)
-				f.logger.Warn(errMsg, zap.String("arch", string(targetArch)))
-				return "", nil, nil, errors.New(errMsg)
-			}
+			overlay.Options = overlayOptsParsed
 
 		} else {
-			legacyBoard = "-" + params.BoardMeta.BoardName
+			errMsg := fmt.Sprintf("no matching overlay found for architecture %s", targetArch)
+			f.logger.Warn(errMsg, zap.String("arch", string(targetArch)))
+			return "", nil, nil, errors.New(errMsg)
 		}
 	}
 
@@ -488,7 +481,6 @@ func (f *Frontend) wizardFinal(ctx context.Context, params WizardParams) (string
 
 			TroubleshootingGuideAvailable bool
 			ProductionGuideAvailable      bool
-			LegacyBoard                   string
 		}{
 			WizardParams: params,
 
@@ -503,7 +495,6 @@ func (f *Frontend) wizardFinal(ctx context.Context, params WizardParams) (string
 
 			TroubleshootingGuideAvailable: talosVersion.GTE(semver.MustParse("1.6.0")),
 			ProductionGuideAvailable:      talosVersion.GTE(semver.MustParse("1.5.0")),
-			LegacyBoard:                   legacyBoard,
 		},
 		params.URLValues(),
 		nil
@@ -689,20 +680,10 @@ func (f *Frontend) handleUISchematicConfig(ctx context.Context, w http.ResponseW
 		return err
 	}
 
-	var filteredOverlays []artifacts.OverlayRef
-	var targetArch artifacts.Arch
+	var overlays []artifacts.OverlayRef
 
 	if quirks.New(version.String()).SupportsOverlay() {
-		archParam := r.URL.Query().Get("arch")
-		if archParam == "" {
-			return fmt.Errorf("arcitecture parameter 'arch' is required")
-		}
-		targetArch = artifacts.Arch(archParam)
-		allOverlays, err := f.artifactsManager.GetOfficialOverlays(ctx, version.String())
-		if err != nil {
-			return err
-		}
-		filteredOverlays, err = artifacts.FilterOverlaysByArch(ctx, f.logger, allOverlays, targetArch, f.artifactsManager.GetRemoteOptions()...)
+		overlays, err = f.artifactsManager.GetOfficialOverlays(ctx, version.String())
 		if err != nil {
 			return err
 		}
@@ -713,7 +694,7 @@ func (f *Frontend) handleUISchematicConfig(ctx context.Context, w http.ResponseW
 		Overlays   []artifacts.OverlayRef
 	}{
 		Extensions: extensions,
-		Overlays:   filteredOverlays,
+		Overlays:   overlays,
 	})
 }
 
