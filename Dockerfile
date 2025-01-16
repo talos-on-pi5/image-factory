@@ -1,21 +1,21 @@
-# syntax = docker/dockerfile-upstream:1.9.0-labs
+# syntax = docker/dockerfile-upstream:1.12.1-labs
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-08-30T14:42:37Z by kres b5ca957.
+# Generated on 2025-01-16T23:25:09Z by kres 3b3f992.
 
 ARG TOOLCHAIN
 
-FROM alpine:3.18 AS base-image-image-factory
+FROM alpine:3.20 AS base-image-image-factory
 
 # runs markdownlint
-FROM docker.io/oven/bun:1.1.34-alpine AS lint-markdown
+FROM docker.io/oven/bun:1.1.43-alpine AS lint-markdown
 WORKDIR /src
-RUN bun i markdownlint-cli@0.41.0 sentences-per-line@0.2.1
+RUN bun i markdownlint-cli@0.43.0 sentences-per-line@0.3.0
 COPY .markdownlint.json .
 COPY ./CHANGELOG.md ./CHANGELOG.md
 COPY ./README.md ./README.md
-RUN bunx markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules node_modules/sentences-per-line/index.js .
+RUN bunx markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules sentences-per-line .
 
 # Installs tailwindcss
 FROM docker.io/node:21.7.3-alpine3.19 AS tailwind-base
@@ -170,10 +170,10 @@ FROM base-image-image-factory AS image-image-factory
 RUN apk add --no-cache --update bash binutils-aarch64 binutils-x86_64 cpio dosfstools efibootmgr kmod mtools pigz qemu-img squashfs-tools tar util-linux xfsprogs xorriso xz zstd
 ARG TARGETARCH
 COPY --from=image-factory image-factory-linux-${TARGETARCH} /image-factory
-COPY --from=ghcr.io/siderolabs/grub:v1.7.0-2-g6101299 / /
-COPY --from=ghcr.io/siderolabs/grub@sha256:46469ae913378d45f69ac10d2dc8ebea54e914542deab2b2f23c95dac5116335 /usr/lib/grub /usr/lib/grub
-COPY --from=ghcr.io/siderolabs/grub@sha256:fd929bae5ad64a3e2a530d6b3cbfab673b60af2e62268a45cf42194df55c116d /usr/lib/grub /usr/lib/grub
-COPY --from=ghcr.io/siderolabs/installer:v1.7.0 /usr/share/grub/unicode.pf2 /usr/share/grub/unicode.pf2
-LABEL org.opencontainers.image.source=https://github.com/skyssolutions/siderolabs-image-factory
+COPY --from=ghcr.io/siderolabs/grub:v1.9.0 / /
+COPY --from=ghcr.io/siderolabs/grub@sha256:4aea36c88627add06512a14c7e571b43405b6eeeca0a8ad295b8c4e31bf57721 /usr/lib/grub /usr/lib/grub
+COPY --from=ghcr.io/siderolabs/grub@sha256:d82f11c8a7dc61fcdcc1d93d9550a1624eb291829a90700983e1c5b1a3b6cc26 /usr/lib/grub /usr/lib/grub
+COPY --from=ghcr.io/siderolabs/installer:v1.9.1 /usr/share/grub/unicode.pf2 /usr/share/grub/unicode.pf2
+LABEL org.opencontainers.image.source=https://github.com/skyssolutions/sideolabs-image-factory
 ENTRYPOINT ["/image-factory"]
 
