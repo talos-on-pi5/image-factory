@@ -6,10 +6,10 @@
 
 ARG TOOLCHAIN
 
-FROM alpine:3.20.3 AS base-image-image-factory
+FROM alpine:3.21.2 AS base-image-image-factory
 
 # runs markdownlint
-FROM docker.io/oven/bun:1.1.43-alpine AS lint-markdown
+FROM docker.io/oven/bun:1.1.45-alpine AS lint-markdown
 WORKDIR /src
 RUN bun i markdownlint-cli@0.43.0 sentences-per-line@0.3.0
 COPY .markdownlint.json .
@@ -18,7 +18,7 @@ COPY ./README.md ./README.md
 RUN bunx markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules sentences-per-line .
 
 # Installs tailwindcss
-FROM docker.io/node:21.7.3-alpine3.19 AS tailwind-base
+FROM docker.io/node:22.12.0-alpine3.19 AS tailwind-base
 WORKDIR /src
 COPY package.json package-lock.json .
 RUN --mount=type=cache,target=/src/node_modules npm ci
