@@ -150,12 +150,11 @@ func (m *Manager) fetchOfficialExtensions(tag string) error {
 	return nil
 }
 
-func (m *Manager) fetchOfficialOverlays(tag string) error {
+func (m *Manager) fetchOfficialOverlays(ctx context.Context, tag string) error {
 	var overlays []OverlayRef
 
-	if err := m.fetchImageByTag(OverlayManifestImage, tag, ArchAmd64, imageExportHandler(func(_ *zap.Logger, r io.Reader) error {
+	if err := m.fetchImageByTag(OverlayManifestImage, tag, "", imageExportHandler(func(_ *zap.Logger, r io.Reader) error {
 		var extractErr error
-
 		overlays, extractErr = extractOverlayList(r)
 
 		if extractErr == nil {

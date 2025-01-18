@@ -417,16 +417,33 @@ func (f *Frontend) wizardFinal(ctx context.Context, params WizardParams) (string
 
 	if params.Target == TargetSBC {
 		if quirks.New(params.Version).SupportsOverlay() {
-			overlay.Name = params.BoardMeta.OverlayName
-			overlay.Image = params.BoardMeta.OverlayImage
-
-			var overlayOptsParsed map[string]any
-
-			if err := yaml.Unmarshal([]byte(params.OverlayOptions), &overlayOptsParsed); err != nil {
-				return "", nil, nil, fmt.Errorf("error parsing overlay options: %w", err)
+			allOverlays, err := f.artifactsManager.GetOfficialOverlays(ctx, params.Version)
+			if err != nil {
+				return "", nil, nil, fmt.Errorf("failed to get overlays: %w", err)
 			}
 
-			overlay.Options = overlayOptsParsed
+			targetArch := artifacts.Arch(params.Arch)
+			filteredOverlays, err := artifacts.FilterOverlaysByArch(ctx, allOverlays, targetArch, f.artifactsManager.GetRemoteOptions()...)
+			if err != nil {
+				return "", nil, nil, fmt.Errorf("failed to filter overlays by architecture: %w", err)
+			}
+
+			if len(filteredOverlays) > 0 {
+				overlay.Name = filteredOverlays[0].Name // Or filteredOverlays[0].TaggedReference.Name() if needed
+				overlay.Image = filteredOverlays[0].TaggedReference.String()
+
+				var overlayOptsParsed map[string]any
+				if err := yaml.Unmarshal([]byte(params.OverlayOptions), &overlayOptsParsed); err != nil {
+					return "", nil, nil, fmt.Errorf("error parsing overlay options: %w", err)
+				}
+				overlay.Options = overlayOptsParsed
+
+			} else {
+				errMsg := fmt.Sprintf("no matching overlay found for architecture %s", targetArch)
+				f.logger.Warn(errMsg, zap.String("arch", string(targetArch)))
+				return "", nil, nil, errors.New(errMsg)
+			}
+
 		} else {
 			legacyBoard = "-" + params.BoardMeta.BoardName
 		}
@@ -669,10 +686,20 @@ func (f *Frontend) handleUISchematicConfig(ctx context.Context, w http.ResponseW
 		return err
 	}
 
-	var overlays []artifacts.OverlayRef
+	var filteredOverlays []artifacts.OverlayRef
+	var targetArch artifacts.Arch
 
 	if quirks.New(version.String()).SupportsOverlay() {
-		overlays, err = f.artifactsManager.GetOfficialOverlays(ctx, version.String())
+		archParam := r.URL.Query().Get("arch")
+		if archParam == "" {
+			return fmt.Errorf("arcitecture parameter 'arch' is required")
+		}
+		targetArch = artifacts.Arch(archParam)
+		allOverlays, err := f.artifactsManager.GetOfficialOverlays(ctx, version.String())
+		if err != nil {
+			return err
+		}
+		filteredOverlays, err = artifacts.FilterOverlaysByArch(ctx, allOverlays, targetArch, f.artifactsManager.GetRemoteOptions()...)
 		if err != nil {
 			return err
 		}
@@ -683,7 +710,7 @@ func (f *Frontend) handleUISchematicConfig(ctx context.Context, w http.ResponseW
 		Overlays   []artifacts.OverlayRef
 	}{
 		Extensions: extensions,
-		Overlays:   overlays,
+		Overlays:   filteredOverlays,
 	})
 }
 
