@@ -130,7 +130,7 @@ func (m *Manager) Get(ctx context.Context, versionString string, arch Arch, kind
 	// check if already extracted
 	if _, err = os.Stat(filepath.Join(m.storagePath, tag)); err != nil {
 		resultCh := m.sf.DoChan(tag, func() (any, error) { //nolint:contextcheck
-			return nil, m.fetchImager(tag)
+			return nil, m.fetchImager(tag, arch)
 		})
 
 		// wait for the fetch to finish
@@ -262,30 +262,59 @@ func (m *Manager) GetOfficialOverlays(ctx context.Context, versionString string)
 }
 
 // FilterOverlaysByArch Filters overlays by architecture
-func FilterOverlaysByArch(ctx context.Context, overlays []OverlayRef, targetArch Arch, remoteOptions ...remote.Option) ([]OverlayRef, error) {
+func FilterOverlaysByArch(ctx context.Context, logger *zap.Logger, overlays []OverlayRef, targetArch Arch, remoteOptions ...remote.Option) ([]OverlayRef, error) {
+	logger.Info("Filtering overlays by architecture", zap.String("targetArch", string(targetArch)))
+	logger.Info("We got these overlays", zap.Any("overlays", overlays))
+
 	filteredOverlays := make([]OverlayRef, 0)
+	initialOverlayCount := len(overlays)
 
 	for _, overlay := range overlays {
-		desc, err := remote.Get(overlay.TaggedReference, remoteOptions...)
+		logFields := []zap.Field{zap.String("overlay", overlay.TaggedReference.String())}
+
+		ref, err := name.ParseReference(overlay.TaggedReference.String())
 		if err != nil {
+			logger.Error("Failed to get reference", append(logFields, zap.Error(err))...)
+		}
+
+		platform := v1.Platform{
+			Architecture: string(targetArch),
+			OS:           "linux",
+		}
+
+		opts := append(remoteOptions, remote.WithPlatform(platform))
+
+		desc, err := remote.Get(ref, opts...)
+		if err != nil {
+			logger.Error("Failed to get manifest", append(logFields, zap.Error(err))...)
 			return nil, fmt.Errorf("failed to get manifest for %s: %w", overlay.TaggedReference, err)
 		}
 
 		img, err := desc.Image()
 		if err != nil {
+			logger.Error("Failed to get image from descriptor", append(logFields, zap.Error(err))...)
 			return nil, fmt.Errorf("failed to get image from descriptor: %w", err)
 		}
 
 		configFile, err := img.ConfigFile()
 		if err != nil {
+			logger.Error("Failed to get config file", append(logFields, zap.Error(err))...)
 			return nil, fmt.Errorf("failed to get config file: %w", err)
 		}
 
 		if configFile.Architecture == string(targetArch) {
 			filteredOverlays = append(filteredOverlays, overlay)
+			logger.Debug("Overlay accepted", append(logFields, zap.String("architecture", configFile.Architecture))...)
+		} else {
+			logger.Debug("Overlay rejected", append(logFields, zap.String("architecture", configFile.Architecture))...)
 		}
-
 	}
+
+	logger.Info("Overlay filtering complete",
+		zap.Int("initialCount", initialOverlayCount),
+		zap.Int("filteredCount", len(filteredOverlays)),
+	)
+
 	return filteredOverlays, nil
 }
 
