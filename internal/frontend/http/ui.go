@@ -426,7 +426,7 @@ func (f *Frontend) wizardFinal(ctx context.Context, params WizardParams) (string
 			}
 
 			targetArch := artifacts.Arch(params.Arch)
-			filteredOverlays, err := artifacts.FilterOverlaysByArch(ctx, allOverlays, targetArch, f.artifactsManager.GetRemoteOptions()...)
+			filteredOverlays, err := artifacts.FilterOverlaysByArch(ctx, f.logger, allOverlays, targetArch, f.artifactsManager.GetRemoteOptions()...)
 			if err != nil {
 				return "", nil, nil, fmt.Errorf("failed to filter overlays by architecture: %w", err)
 			}
@@ -702,7 +702,7 @@ func (f *Frontend) handleUISchematicConfig(ctx context.Context, w http.ResponseW
 		if err != nil {
 			return err
 		}
-		filteredOverlays, err = artifacts.FilterOverlaysByArch(ctx, allOverlays, targetArch, f.artifactsManager.GetRemoteOptions()...)
+		filteredOverlays, err = artifacts.FilterOverlaysByArch(ctx, f.logger, allOverlays, targetArch, f.artifactsManager.GetRemoteOptions()...)
 		if err != nil {
 			return err
 		}
