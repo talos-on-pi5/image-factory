@@ -92,13 +92,13 @@ func (m *Manager) fetchImageByTag(imageName, tag string, architecture Arch, imag
 
 	m.logger.Debug("heading the image", zap.Stringer("image", repoRef))
 
+	if architecture == "" {
+		architecture = ArchAmd64
+	}
+
 	descriptor, err := m.pullers[architecture].Head(ctx, repoRef)
 	if err != nil {
 		return err
-	}
-
-	if architecture == "" {
-		architecture = ArchAmd64
 	}
 
 	digestRef := repoRef.Digest(descriptor.Digest.String())
