@@ -97,6 +97,10 @@ func (m *Manager) fetchImageByTag(imageName, tag string, architecture Arch, imag
 		return err
 	}
 
+	if architecture == "" {
+		architecture = ArchAmd64
+	}
+
 	digestRef := repoRef.Digest(descriptor.Digest.String())
 
 	return m.fetchImageByDigest(digestRef, architecture, imageHandler)

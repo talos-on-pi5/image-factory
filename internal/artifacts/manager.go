@@ -155,6 +155,10 @@ func (m *Manager) Get(ctx context.Context, versionString string, arch Arch, kind
 	return path, nil
 }
 
+func (m *Manager) GetRemoteOptions() []remote.Option {
+	return m.options.RemoteOptions
+}
+
 // GetTalosVersions returns a list of Talos versions available.
 func (m *Manager) GetTalosVersions(ctx context.Context) ([]semver.Version, error) {
 	m.talosVersionsMu.Lock()
@@ -238,7 +242,7 @@ func (m *Manager) GetOfficialOverlays(ctx context.Context, versionString string)
 	}
 
 	resultCh := m.sf.DoChan("overlays-"+tag, func() (any, error) { //nolint:contextcheck
-		return nil, m.fetchOfficialOverlays(tag)
+		return nil, m.fetchOfficialOverlays(ctx, tag)
 	})
 
 	select {
@@ -255,6 +259,34 @@ func (m *Manager) GetOfficialOverlays(ctx context.Context, versionString string)
 	m.officialOverlaysMu.Unlock()
 
 	return overlays, nil
+}
+
+// FilterOverlaysByArch Filters overlays by architecture
+func FilterOverlaysByArch(ctx context.Context, overlays []OverlayRef, targetArch Arch, remoteOptions ...remote.Option) ([]OverlayRef, error) {
+	filteredOverlays := make([]OverlayRef, 0)
+
+	for _, overlay := range overlays {
+		desc, err := remote.Get(overlay.TaggedReference, remoteOptions...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get manifest for %s: %w", overlay.TaggedReference, err)
+		}
+
+		img, err := desc.Image()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get image from descriptor: %w", err)
+		}
+
+		configFile, err := img.ConfigFile()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get config file: %w", err)
+		}
+
+		if configFile.Architecture == string(targetArch) {
+			filteredOverlays = append(filteredOverlays, overlay)
+		}
+
+	}
+	return filteredOverlays, nil
 }
 
 // GetInstallerImage pulls and stoers in OCI layout installer image.
