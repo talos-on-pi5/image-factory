@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -358,7 +359,10 @@ func (f *Frontend) wizardArch(_ context.Context, params WizardParams) (string, a
 func (f *Frontend) wizardExtensions(ctx context.Context, params WizardParams) (string, any, url.Values, error) {
 	extensions, err := f.getOfficialExtensions(ctx, params.Version)
 	if err != nil {
-		return "", nil, nil, err
+		f.logger.Error("Error getting official extensions", zap.Error(err))
+
+		// Proceed with an empty extensions list
+		extensions = []artifacts.ExtensionRef{} // Initialize as an empty slice
 	}
 
 	return "wizard-extensions",
