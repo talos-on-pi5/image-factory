@@ -41,7 +41,7 @@ func SBCs() []SBC {
 			Name:         "rpi_custom",
 			BoardName:    "rpi_generic",
 			OverlayName:  "rpi_custom",
-			OverlayImage: "ghcr.io/skyssolutions/sbc-raspberrypi",
+			OverlayImage: "skyssolutions/sbc-raspberrypi",
 
 			Label:         "Raspberry Pi Series (Custom edition)",
 			Documentation: "/talos-guides/install/single-board-computers/rpi_generic/",
