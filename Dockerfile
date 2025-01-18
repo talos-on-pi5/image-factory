@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2025-01-16T23:52:42Z by kres 3b3f992.
+# Generated on 2025-01-18T06:35:45Z by kres 3b3f992.
 
 ARG TOOLCHAIN
 
@@ -174,6 +174,6 @@ COPY --from=ghcr.io/siderolabs/grub:v1.9.0 / /
 COPY --from=ghcr.io/siderolabs/grub@sha256:4aea36c88627add06512a14c7e571b43405b6eeeca0a8ad295b8c4e31bf57721 /usr/lib/grub /usr/lib/grub
 COPY --from=ghcr.io/siderolabs/grub@sha256:d82f11c8a7dc61fcdcc1d93d9550a1624eb291829a90700983e1c5b1a3b6cc26 /usr/lib/grub /usr/lib/grub
 COPY --from=ghcr.io/siderolabs/installer:v1.9.1 /usr/share/grub/unicode.pf2 /usr/share/grub/unicode.pf2
-LABEL org.opencontainers.image.source=https://github.com/skyssolutions/sideolabs-image-factory
+LABEL org.opencontainers.image.source=https://github.com/skyssolutions/siderolabs-image-factory
 ENTRYPOINT ["/image-factory"]
 

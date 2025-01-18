@@ -59,21 +59,21 @@ func (m *Manager) fetchTalosVersions() (any, error) {
 			if !(version.Major == maxVersion.Major && version.Minor == maxVersion.Minor) {
 				return false
 			}
-			//	if version.Pre[0].VersionStr == "skylab" {
-			//		return true
-			//	}
-			//
-			//	if len(version.Pre) != 2 {
-			//		return false
-			//	}
-			//
-			//	if !(version.Pre[0].VersionStr == "alpha" || version.Pre[0].VersionStr == "beta") {
-			//		return false
-			//	}
-			//
-			//	if !version.Pre[1].IsNumeric() {
-			//		return false
-			//	}
+			if version.Pre[0].VersionStr == "skylab" {
+				return true
+			}
+
+			if len(version.Pre) != 2 {
+				return false
+			}
+
+			if !(version.Pre[0].VersionStr == "alpha" || version.Pre[0].VersionStr == "beta") {
+				return false
+			}
+
+			if !version.Pre[1].IsNumeric() {
+				return false
+			}
 		}
 
 		return true

@@ -310,6 +310,9 @@ func (f *Frontend) wizardSBCs(_ context.Context, params WizardParams) (string, a
 	if params.SelectedBoard == "" {
 		params.SelectedBoard = "rpi_generic"
 	}
+	if params.Arch == "" {
+		params.Arch = "arm64"
+	}
 
 	talosVersion, _ := semver.ParseTolerant(params.Version) //nolint:errcheck
 
