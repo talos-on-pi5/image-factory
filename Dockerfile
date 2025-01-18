@@ -18,7 +18,7 @@ COPY ./README.md ./README.md
 RUN bunx markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules sentences-per-line .
 
 # Installs tailwindcss
-FROM docker.io/node:21.7.3-alpine3.19 AS tailwind-base
+FROM docker.io/node:22.12.0-alpine3.19 AS tailwind-base
 WORKDIR /src
 COPY package.json package-lock.json .
 RUN --mount=type=cache,target=/src/node_modules npm ci
