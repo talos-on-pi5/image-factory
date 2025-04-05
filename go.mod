@@ -27,7 +27,7 @@ require (
 	github.com/ulikunitz/xz v0.5.12
 	go.uber.org/zap v1.27.0
 	golang.org/x/net v0.33.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.13.0
 	golang.org/x/sys v0.29.0
 	gopkg.in/yaml.v3 v3.0.1
 )
