@@ -723,6 +723,8 @@ github.com/siderolabs/go-debug v0.4.0 h1:pbFt6Rzumm90s3GvbRer7yIxFNc0gQ94I53omkq
 github.com/siderolabs/go-debug v0.4.0/go.mod h1:9/dyHLRRIpqlJ0uTYyHo1XuZgoCgXzjjF+aIVTnr9Dc=
 github.com/siderolabs/go-pointer v1.0.0 h1:6TshPKep2doDQJAAtHUuHWXbca8ZfyRySjSBT/4GsMU=
 github.com/siderolabs/go-pointer v1.0.0/go.mod h1:HTRFUNYa3R+k0FFKNv11zgkaCLzEkWVzoYZ433P3kHc=
+github.com/siderolabs/go-pointer v1.0.1 h1:f7Yi4IK1jptS8yrT9GEbwhmGcVxvPQgBUG/weH3V3DM=
+github.com/siderolabs/go-pointer v1.0.1/go.mod h1:C8Q/3pNHT4RE9e4rYR9PHeS6KPMlStRBgYrJQJNy/vA=
 github.com/siderolabs/go-procfs v0.1.2 h1:bDs9hHyYGE2HO1frpmUsD60yg80VIEDrx31fkbi4C8M=
 github.com/siderolabs/go-procfs v0.1.2/go.mod h1:dBzQXobsM7+TWRRI3DS9X7vAuj8Nkfgu3Z/U9iY3ZTY=
 github.com/siderolabs/go-retry v0.3.3 h1:zKV+S1vumtO72E6sYsLlmIdV/G/GcYSBLiEx/c9oCEg=
