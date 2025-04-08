@@ -11,7 +11,7 @@ require (
 	github.com/google/go-containerregistry v0.20.3
 	github.com/h2non/filetype v1.1.3
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/klauspost/compress v1.17.11
+	github.com/klauspost/compress v1.18.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/siderolabs/gen v0.8.0
