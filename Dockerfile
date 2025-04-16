@@ -1,4 +1,4 @@
-# syntax = docker/dockerfile-upstream:1.12.1-labs
+# syntax = docker/dockerfile-upstream:1.14.1-labs
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
