@@ -6,7 +6,7 @@
 
 ARG TOOLCHAIN
 
-FROM alpine:3.21.2 AS base-image-image-factory
+FROM alpine:3.21.3 AS base-image-image-factory
 
 # runs markdownlint
 FROM docker.io/oven/bun:1.2.8-alpine AS lint-markdown
